@@ -136,7 +136,7 @@ def main_loop(game):
         game.handle_events()
         game.update()
         game.render()
-        game.clock.tick(10)
+        game.clock.tick(20)
 
     pygame.quit()
 
