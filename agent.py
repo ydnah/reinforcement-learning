@@ -31,11 +31,15 @@ class Agent:
         self.memory.append((state, action, reward, next_state, done))
 
     def train_long_memory(self):
+        # Check there is more then items in memory then the batch size
         if len(self.memory) > BATCH_SIZE:
+            # Take a random sample
             mini_sample = random.sample(self.memory, BATCH_SIZE)
         else:
+            # Take whole of memory if not
             mini_sample = self.memory
 
+        # Pairs elements of the mini sample together
         states, actions, rewards, next_states, dones = zip(*mini_sample)
         self.trainer.train_step(states, actions, rewards, next_states, dones)
 
@@ -44,7 +48,7 @@ class Agent:
         self.trainer.train_step(state, action, reward, next_state, done)
 
     def get_action(self, state):
-        # Determine if a move is going to be random for from prediciton
+        # Determine if a move is going to be random for from prediciton (traderoff exploration/exploitations)
         self.epsilon = 80 - self.n_games
         # Create move
         final_move = [0, 0, 0]
@@ -56,7 +60,7 @@ class Agent:
             final_move[move] = 1
         # If not a random move
         else:
-            #
+            # Convert state to tensor
             state0 = torch.tensor(state, dtype=torch.float)
             # Get next move
             prediction = self.model(state0)

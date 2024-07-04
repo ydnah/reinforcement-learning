@@ -45,7 +45,7 @@ class QTrainer:
         reward = torch.tensor(reward, dtype=torch.float)
         next_state = torch.tensor(next_state, dtype=torch.float)
 
-        # Flatten variables
+        # Reshape if only 1 value variables (1, x)
         if len(state.shape) == 1:
             state = torch.unsqueeze(state, 0)
             action = torch.unsqueeze(action, 0)
@@ -53,10 +53,12 @@ class QTrainer:
             next_state = torch.unsqueeze(next_state, 0)
             done = (done,)
 
+        # Q update rule
+        # Get predicted values with current state
         pred = self.model(state)
 
+        # r + gamma * max(next_state)
         target = pred.clone()
-
         for idx in range(len(done)):
             Q_new = reward[idx]
             if not done[idx]:
