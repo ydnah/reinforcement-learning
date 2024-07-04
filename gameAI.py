@@ -22,6 +22,18 @@ class Game:
         self.food = Food()
         self.score = 0
         self.running = True
+        self.reset()
+
+    def reset(self):
+        self.direction = [BLOCK_SIZE, 0]
+        self.body = [
+            (BLOCK_SIZE * 1, BLOCK_SIZE * 1),
+            (BLOCK_SIZE * 2, BLOCK_SIZE * 2),
+            (BLOCK_SIZE * 3, BLOCK_SIZE * 3),
+        ]
+        self.score = 0
+        self.food.randomize_position()
+        self.frame_iteration = 0
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -30,18 +42,26 @@ class Game:
             elif event.type == pygame.KEYDOWN:
                 self.snake.change_direction()
 
-    def update(self):
+    def update(self, action):
         if not self.running:
             return
 
-        self.snake.move()
-        if self.snake.check_collision():
-            return self.game_over()
+        self.frame_iteration += 1
+
+        self.snake.move(action)
+
+        reward = 0
+        if self.snake.check_collision() or self.frame_iteration > 100 * len(self.snake):
+            reward = -10
+            return self.game_over(), reward, self.score
 
         if self.snake.body[0] == self.food.position:
             self.snake.grow()
             self.food.randomize_position()
             self.score += 1
+            reward = 10
+
+        return self.running, reward, self.score
 
     def render(self):
         self.screen.fill(BLACK)
@@ -97,20 +117,15 @@ class Snake:
             return True
         return False
 
-    def change_direction(self):
-        keys = pygame.key.get_pressed()
-
-        if keys[pygame.K_LEFT] and self.direction != [BLOCK_SIZE, 0]:
-            self.direction = [-BLOCK_SIZE, 0]
-
-        if keys[pygame.K_RIGHT] and self.direction != [-BLOCK_SIZE, 0]:
-            self.direction = [BLOCK_SIZE, 0]
-
-        if keys[pygame.K_UP] and self.direction != [0, BLOCK_SIZE]:
-            self.direction = [0, -BLOCK_SIZE]
-
-        if keys[pygame.K_DOWN] and self.direction != [0, -BLOCK_SIZE]:
-            self.direction = [0, BLOCK_SIZE]
+    def change_direction(self, action):
+        if action == "LEFT":
+            self.direction = (-BLOCK_SIZE, 0)
+        elif action == "RIGHT":
+            self.direction = (BLOCK_SIZE, 0)
+        elif action == "UP":
+            self.direction = (0, -BLOCK_SIZE)
+        elif action == "DOWN":
+            self.direction = (0, BLOCK_SIZE)
 
 
 class Food:
