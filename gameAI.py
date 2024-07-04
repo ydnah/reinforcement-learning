@@ -26,15 +26,11 @@ class Game:
         self.reset()
 
     def reset(self):
-        self.snake.direction = [BLOCK_SIZE, 0]
-        self.body = [
-            (BLOCK_SIZE * 1, BLOCK_SIZE * 1),
-            (BLOCK_SIZE * 2, BLOCK_SIZE * 2),
-            (BLOCK_SIZE * 3, BLOCK_SIZE * 3),
-        ]
+        self.snake = Snake()
         self.score = 0
         self.food.randomize_position()
         self.frame_iteration = 0
+        self.running = True
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -49,13 +45,18 @@ class Game:
 
         self.frame_iteration += 1
 
-        self.snake.move(action)
+        self.snake.change_direction(action)
+        self.snake.move()
 
         self.reward = 0
 
-        if self.snake.check_collision() or self.frame_iteration > 100 * len(self.snake):
+        if self.snake.check_collision(
+            self.snake.body[0]
+        ) or self.frame_iteration > 100 * len(self.snake.body):
             self.reward = -10
-            self.get_game_state()
+            self.running = False
+
+            return self.reward, not self.running, self.score
 
         if self.snake.body[0] == self.food.position:
             self.snake.grow()
@@ -63,7 +64,7 @@ class Game:
             self.score += 1
             self.reward = 10
 
-        self.get_game_state()
+        return self.reward, not self.running, self.score
 
     def render(self):
         self.screen.fill(BLACK)
@@ -85,24 +86,18 @@ class Game:
         self.screen.blit(text, [0, 0])
         pygame.display.flip()
 
-    def game_over(self):
-        self.running = False
-
-    def get_game_state(self):
-        return self.reward, self.running, self.score
-
     def get_snake_state(self):
         head = self.snake.body[0]
 
-        point_l = (head[0] - 20, head[1])
-        point_r = (head[0] + 20, head[1])
-        point_u = (head[0], head[1] - 20)
-        point_d = (head[0], head[1] + 20)
+        point_l = (head[0] - BLOCK_SIZE, head[1])
+        point_r = (head[0] + BLOCK_SIZE, head[1])
+        point_u = (head[0], head[1] - BLOCK_SIZE)
+        point_d = (head[0], head[1] + BLOCK_SIZE)
 
-        dir_l = self.snake.direction == [-20, 0]
-        dir_r = self.snake.direction == [20, 0]
-        dir_u = self.snake.direction == [0, -20]
-        dir_d = self.snake.direction == [0, 20]
+        dir_l = self.snake.direction == [-BLOCK_SIZE, 0]
+        dir_r = self.snake.direction == [BLOCK_SIZE, 0]
+        dir_u = self.snake.direction == [0, -BLOCK_SIZE]
+        dir_d = self.snake.direction == [0, BLOCK_SIZE]
 
         state = [
             (dir_r and self.snake.check_collision(point_r))
@@ -124,7 +119,7 @@ class Game:
             self.food.position[0] < head[0],
             self.food.position[0] > head[0],
             self.food.position[1] < head[1],
-            self.food.position[1] < head[1],
+            self.food.position[1] > head[1],
         ]
 
         return np.array(state, dtype=int)
@@ -133,9 +128,9 @@ class Game:
 class Snake:
     def __init__(self):
         self.body = [
+            (BLOCK_SIZE * 5, BLOCK_SIZE * 5),
+            (BLOCK_SIZE * 4, BLOCK_SIZE * 5),
             (BLOCK_SIZE * 3, BLOCK_SIZE * 5),
-            (BLOCK_SIZE * 2, BLOCK_SIZE * 5),
-            (BLOCK_SIZE * 1, BLOCK_SIZE * 5),
         ]
         self.direction = [BLOCK_SIZE, 0]
 
@@ -159,8 +154,11 @@ class Snake:
             return True
         return False
 
-    def change_direction(self, action):
+    def change_direction(self, action=None):
         # [straight, right, left]
+
+        if action is None:
+            return
 
         clock_wise = [
             [BLOCK_SIZE, 0],

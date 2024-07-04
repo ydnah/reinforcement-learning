@@ -2,9 +2,11 @@ import random
 from collections import deque
 
 import numpy as np
+import pygame
 import torch
 
 from gameAI import Game
+from model import Linear_QNet, QTrainer
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
@@ -15,13 +17,13 @@ class Agent:
     def __init__(self):
         self.n_games = 0
         self.epsilon = 0
-        self.gamma = 0
+        self.gamma = 0.9
         self.memory = deque(maxlen=MAX_MEMORY)
-        self.model = None
-        self.trainer = None
+        self.model = Linear_QNet(11, 256, 3)
+        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
     def get_state(self, game):
-        game.get_snake_state()
+        return game.get_snake_state()
 
     def remeber(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
@@ -46,7 +48,7 @@ class Agent:
             final_move[move] = 1
         else:
             state0 = torch.tensor(state, dtype=torch.float)
-            prediction = self.model.predict(state0)
+            prediction = self.model(state0)
             move = torch.argmax(prediction).item()
             final_move[move] = 1
 
@@ -58,9 +60,11 @@ def train():
     plot_mean_scores = []
     total_score = 0
     record = 0
+    pygame.init()
     agent = Agent()
     game = Game()
     while True:
+        game.handle_events()
         state_old = agent.get_state(game)
 
         final_move = agent.get_action(state_old)
@@ -79,8 +83,12 @@ def train():
 
             if score > record:
                 record = score
+                agent.model.save()
 
             print(f"Game= {agent.n_games}, Score= {score}, Record= {record}")
+
+        game.render()
+        game.clock.tick(100)
 
 
 if __name__ == "__main__":
