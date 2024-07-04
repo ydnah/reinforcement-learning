@@ -1,6 +1,6 @@
 import random
-import sys
 
+import numpy as np
 import pygame
 
 WIDTH = 400
@@ -21,6 +21,7 @@ class Game:
         self.snake = Snake()
         self.food = Food()
         self.score = 0
+        self.reward = 0
         self.running = True
         self.reset()
 
@@ -50,18 +51,19 @@ class Game:
 
         self.snake.move(action)
 
-        reward = 0
+        self.reward = 0
+
         if self.snake.check_collision() or self.frame_iteration > 100 * len(self.snake):
-            reward = -10
-            return self.game_over(), reward, self.score
+            self.reward = -10
+            self.get_game_state()
 
         if self.snake.body[0] == self.food.position:
             self.snake.grow()
             self.food.randomize_position()
             self.score += 1
-            reward = 10
+            self.reward = 10
 
-        return self.running, reward, self.score
+        self.get_game_state()
 
     def render(self):
         self.screen.fill(BLACK)
@@ -84,17 +86,18 @@ class Game:
         pygame.display.flip()
 
     def game_over(self):
-        print("Game Over!")
-        print(f"Your score: {self.score}")
         self.running = False
+
+    def get_game_state(self):
+        return self.reward, self.running, self.score
 
 
 class Snake:
     def __init__(self):
         self.body = [
-            (BLOCK_SIZE * 1, BLOCK_SIZE * 1),
-            (BLOCK_SIZE * 2, BLOCK_SIZE * 2),
-            (BLOCK_SIZE * 3, BLOCK_SIZE * 3),
+            (BLOCK_SIZE * 3, BLOCK_SIZE * 5),
+            (BLOCK_SIZE * 2, BLOCK_SIZE * 5),
+            (BLOCK_SIZE * 1, BLOCK_SIZE * 5),
         ]
         self.direction = [BLOCK_SIZE, 0]
 
@@ -109,23 +112,36 @@ class Snake:
     def grow(self):
         self.body.append(self.body[-1])
 
-    def check_collision(self):
-        head_x, head_y = self.body[0]
-        if head_x < 0 or head_x >= WIDTH or head_y < 0 or head_y >= HEIGHT:
+    def check_collision(self, pt):
+        if pt is None:
+            pt = self.body[0]
+        if pt[0] < 0 or pt[0] >= WIDTH or pt[1] < 0 or pt[1] >= HEIGHT:
             return True
-        if (head_x, head_y) in self.body[1:]:
+        if pt in self.body[1:]:
             return True
         return False
 
     def change_direction(self, action):
-        if action == "LEFT":
-            self.direction = (-BLOCK_SIZE, 0)
-        elif action == "RIGHT":
-            self.direction = (BLOCK_SIZE, 0)
-        elif action == "UP":
-            self.direction = (0, -BLOCK_SIZE)
-        elif action == "DOWN":
-            self.direction = (0, BLOCK_SIZE)
+        # [straight, right, left]
+
+        clock_wise = [
+            [BLOCK_SIZE, 0],
+            [0, BLOCK_SIZE],
+            [-BLOCK_SIZE, 0],
+            [0, -BLOCK_SIZE],
+        ]
+        idx = clock_wise.index(self.direction)
+
+        if np.array_equal(action, [1, 0, 0]):
+            new_dir = clock_wise[idx]
+        elif np.array_equal(action, [0, 1, 0]):
+            next_idx = (idx + 1) % 4
+            new_dir = clock_wise[next_idx]
+        else:
+            next_idx = (idx - 1) % 4
+            new_dir = clock_wise[next_idx]
+
+        self.direction = new_dir
 
 
 class Food:
@@ -137,24 +153,3 @@ class Food:
         y = random.randint(0, (HEIGHT - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
         self.position = (x, y)
         return self.position
-
-
-def initialize_game():
-    pygame.init()
-    game = Game()
-    return game
-
-
-def main_loop(game):
-    while game.running:
-        game.handle_events()
-        game.update()
-        game.render()
-        game.clock.tick(10)
-
-    pygame.quit()
-
-
-if __name__ == "__main__":
-    game = initialize_game()
-    main_loop(game)
