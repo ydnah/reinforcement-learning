@@ -23,9 +23,11 @@ class Agent:
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
     def get_state(self, game):
+        # Get the state of the snake
         return game.get_snake_state()
 
     def remeber(self, state, action, reward, next_state, done):
+        # Store to memory
         self.memory.append((state, action, reward, next_state, done))
 
     def train_long_memory(self):
@@ -38,18 +40,29 @@ class Agent:
         self.trainer.train_step(states, actions, rewards, next_states, dones)
 
     def train_short_memory(self, state, action, reward, next_state, done):
+        # Complete a step
         self.trainer.train_step(state, action, reward, next_state, done)
 
     def get_action(self, state):
+        # Determine if a move is going to be random for from prediciton
         self.epsilon = 80 - self.n_games
+        # Create move
         final_move = [0, 0, 0]
+        # Get a random int, if its less then epsilion make the snake move randomly
         if random.randint(0, 200) < self.epsilon:
+            # Get a random int
             move = random.randint(0, 2)
+            # Turn a value from move to true, indiciting snakes next move
             final_move[move] = 1
+        # If not a random move
         else:
+            #
             state0 = torch.tensor(state, dtype=torch.float)
+            # Get next move
             prediction = self.model(state0)
+            # Returns [0, 0, 0] get the highest value and a item of the list
             move = torch.argmax(prediction).item()
+            # Set direction to move
             final_move[move] = 1
 
         return final_move
