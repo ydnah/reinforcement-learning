@@ -26,7 +26,7 @@ class Game:
         self.reset()
 
     def reset(self):
-        self.direction = [BLOCK_SIZE, 0]
+        self.snake.direction = [BLOCK_SIZE, 0]
         self.body = [
             (BLOCK_SIZE * 1, BLOCK_SIZE * 1),
             (BLOCK_SIZE * 2, BLOCK_SIZE * 2),
@@ -90,6 +90,44 @@ class Game:
 
     def get_game_state(self):
         return self.reward, self.running, self.score
+
+    def get_snake_state(self):
+        head = self.snake.body[0]
+
+        point_l = (head[0] - 20, head[1])
+        point_r = (head[0] + 20, head[1])
+        point_u = (head[0], head[1] - 20)
+        point_d = (head[0], head[1] + 20)
+
+        dir_l = self.snake.direction == [-20, 0]
+        dir_r = self.snake.direction == [20, 0]
+        dir_u = self.snake.direction == [0, -20]
+        dir_d = self.snake.direction == [0, 20]
+
+        state = [
+            (dir_r and self.snake.check_collision(point_r))
+            or (dir_l and self.snake.check_collision(point_l))
+            or (dir_u and self.snake.check_collision(point_u))
+            or (dir_d and self.snake.check_collision(point_d)),
+            (dir_u and self.snake.check_collision(point_r))
+            or (dir_d and self.snake.check_collision(point_l))
+            or (dir_l and self.snake.check_collision(point_u))
+            or (dir_r and self.snake.check_collision(point_d)),
+            (dir_d and self.snake.check_collision(point_r))
+            or (dir_u and self.snake.check_collision(point_l))
+            or (dir_r and self.snake.check_collision(point_u))
+            or (dir_l and self.snake.check_collision(point_d)),
+            dir_l,
+            dir_r,
+            dir_u,
+            dir_d,
+            self.food.position[0] < head[0],
+            self.food.position[0] > head[0],
+            self.food.position[1] < head[1],
+            self.food.position[1] < head[1],
+        ]
+
+        return np.array(state, dtype=int)
 
 
 class Snake:
